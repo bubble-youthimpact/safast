@@ -136,7 +136,7 @@ main{flex:1;padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 .loc__place{display:flex;align-items:center;gap:8px;font-weight:600;font-size:16px;min-width:0}
 .loc__place .icon{color:var(--accent)}
 .loc__place span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.loc__tools{margin-left:auto;display:flex;gap:8px}
+.toptools{display:flex;gap:8px}.toptools:empty{display:none}
 .homegrid{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
 .today{padding:24px;display:flex;flex-direction:column;gap:22px;position:relative;overflow:hidden}
 .today__top{display:flex;justify-content:space-between;align-items:center;gap:8px 12px;flex-wrap:wrap}
@@ -534,6 +534,7 @@ a.status:hover{filter:brightness(.97)}
 .leaflet-top,.leaflet-bottom{position:absolute;z-index:1000;pointer-events:none}.leaflet-top{top:0}.leaflet-right{right:0}.leaflet-bottom{bottom:0}.leaflet-left{left:0}
 .leaflet-right .leaflet-control{float:right}.leaflet-left .leaflet-control{margin-left:12px}.leaflet-top .leaflet-control{margin-top:12px}.leaflet-bottom .leaflet-control{margin-bottom:0}
 .leaflet-zoom-animated{transform-origin:0 0}
+.leaflet-tooltip{position:absolute;padding:6px 10px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);font-size:13px;font-weight:600;white-space:nowrap;pointer-events:none}.leaflet-tooltip-pane{z-index:650}
 .leaflet-zoom-anim .leaflet-zoom-animated{transition:transform .25s cubic-bezier(0,0,.25,1)}
 .leaflet-zoom-anim .leaflet-tile,.leaflet-pan-anim .leaflet-tile{transition:none}
 .leaflet-grab{cursor:grab}.leaflet-dragging .leaflet-grab{cursor:grabbing}
@@ -570,6 +571,7 @@ a.status:hover{filter:brightness(.97)}
 .formwrap{max-width:640px;display:flex;flex-direction:column;gap:24px}
 .fieldset{padding:22px;display:flex;flex-direction:column;gap:16px}
 .fieldset h2{font-size:18px}
+.fieldset>.section__head,.panel>.section__head{align-items:center;gap:10px 16px;margin-top:-4px}
 .fgrid{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
 @media (min-width:600px){.fgrid.two{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .field{display:flex;flex-direction:column;gap:7px;min-width:0}
@@ -641,6 +643,7 @@ select.input{appearance:none;-webkit-appearance:none;padding-right:40px;backgrou
         <a href="/" data-link class="logo" aria-label="SAFAST home"></a>
         <span class="topbar__title" id="toptitle"></span>
         <span class="spacer"></span>
+        <div class="toptools" id="toptools"></div>
         <a class="acct" id="acctbtn" href="/login" data-link></a>
       </div>
     </header>
@@ -2014,8 +2017,7 @@ function vHome(){
   const alertBlock=nonHealth.length?`<section class="section" style="gap:12px"><div class="section__head"><h2>${t('activeAlerts')}</h2>${nonHealth.length>2?`<a class="btn btn--ghost btn--sm" href="/map" data-link>${t('map')} ${ic('arrow')}</a>`:''}</div>
     <div class="alerts">${nonHealth.slice(0,2).map(a=>alertCard(a,true)).join('')}</div>${S.alertsSample?`<p class="note">${t('exampleNote')}</p>`:''}</section>`:'';
   const place=esc(S.place||(S.loc?`${S.loc.lat}, ${S.loc.lon}`:defName()));
-  const head=`<div class="loc"><div class="loc__place">${ic('pin')}<span>${place}</span></div>
-    <div class="loc__tools"><button class="iconbtn" data-action="speak" aria-label="${t('readAloud')}">${ic('speaker')}</button><button class="iconbtn" data-action="settings" aria-label="${t('settings')}">${ic('gear')}</button></div></div>`;
+  const head=`<div class="loc"><div class="loc__place">${ic('pin')}<span>${place}</span></div></div>`;
   if(!w) return `<div class="page view">${status}${head}<div class="card today" style="min-height:320px;display:grid;place-items:center;color:var(--muted)">${t('locating')}</div></div>`;
   const now=new Date(), fmt=new Intl.DateTimeFormat(locTag(),{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:w.tz||undefined});
   const tr=tempRisk(w.cur.fl), ab=w.aqi!=null?aqBand(w.aqi):null, td=w.daily[0];
@@ -2272,21 +2274,21 @@ function initMap(){
   const el=document.getElementById('map'); if(!el) return;
   if(mapObj){try{mapObj.remove()}catch(e){} mapObj=null}
   const loc=S.loc||DEFAULT_LOC;
-  if(!window.L){mapFallback(el);return}
+  const LF=window.L; if(!LF||typeof LF.map!=='function'){mapFallback(el);return}
   try{
     const dark=document.documentElement.dataset.theme==='dark'||(!document.documentElement.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);
-    mapObj=L.map(el,{zoomControl:true,attributionControl:true}).setView([loc.lat,loc.lon],12);
+    mapObj=LF.map(el,{zoomControl:true,attributionControl:true}).setView([loc.lat,loc.lon],12);
     let ok=false;
-    const layer=L.tileLayer(`https://{s}.basemap.cartocdn.com/${dark?'dark_all':'voyager'}/{z}/{x}/{y}{r}.png`,{maxZoom:19,subdomains:'abcd',attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'}).addTo(mapObj);
+    const layer=LF.tileLayer(`https://{s}.basemap.cartocdn.com/${dark?'dark_all':'voyager'}/{z}/{x}/{y}{r}.png`,{maxZoom:19,subdomains:'abcd',attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'}).addTo(mapObj);
     layer.on('tileload',()=>{ok=true});
-    L.marker([loc.lat,loc.lon],{icon:L.divIcon({className:'',html:'<div class="youpin"></div>',iconSize:[22,22],iconAnchor:[11,11]})}).addTo(mapObj);
+    LF.marker([loc.lat,loc.lon],{icon:LF.divIcon({className:'',html:'<div class="youpin"></div>',iconSize:[22,22],iconAnchor:[11,11]})}).addTo(mapObj);
     const css=getComputedStyle(document.documentElement), col=lv=>css.getPropertyValue(lv==='warning'?'--bad':lv==='watch'?'--warn':'--adv').trim();
     const polys=[];
     S.alerts.filter(a=>a.geom).slice().reverse().forEach(a=>{try{
-      const pl=L.polygon(a.geom.map(poly=>poly.map(ring=>ring.map(([x,y])=>[y,x]))),{color:col(a.level),weight:2,fillOpacity:.14}).addTo(mapObj);
+      const pl=LF.polygon(a.geom.map(poly=>poly.map(ring=>ring.map(([x,y])=>[y,x]))),{color:col(a.level),weight:2,fillOpacity:.14}).addTo(mapObj);
       pl.bindTooltip?.(atxt(a.title)); polys.push(pl);
     }catch(e){}});
-    const pin=(lat,lon,lv,hz,title,small)=>L.marker([lat,lon],{title,icon:L.divIcon({className:'',html:`<div class="apin ap-${lv}${small?' apin--sm':''}">${ic((HZ[hz]||HZ.other)[0])}</div>`,iconSize:small?[22,22]:[30,30],iconAnchor:small?[11,11]:[15,15]})}).addTo(mapObj);
+    const pin=(lat,lon,lv,hz,title,small)=>LF.marker([lat,lon],{title,icon:LF.divIcon({className:'',html:`<div class="apin ap-${lv}${small?' apin--sm':''}">${ic((HZ[hz]||HZ.other)[0])}</div>`,iconSize:small?[22,22]:[30,30],iconAnchor:small?[11,11]:[15,15]})}).addTo(mapObj);
     if(S.mapScope==='world'){
       const ev=(S.gdacs&&S.gdacs.events)||[];
       ev.slice().sort((a,b)=>LV_RANK[a.level]-LV_RANK[b.level]).forEach(e=>{const m=pin(e.lat,e.lon,LV_CLS[e.level],GD_HZ[e.type],`${gdName(e.type)} ${e.name||''} · ${e.country||''}`,e.alert==='Green');m.on('click',()=>window.open(e.report,'_blank','noopener'))});
@@ -2297,13 +2299,13 @@ function initMap(){
       // draw GDACS affected areas (cyclone wind zones, flood extents…) for events near you
       S.alerts.filter(a=>a.source==='gdacs'&&a.geomUrl).forEach(a=>fetchGdacsGeom(a).then(fc=>{
         if(!fc||!mapObj) return;
-        try{L.geoJSON(fc,{filter:f=>f.geometry&&/Polygon/.test(f.geometry.type),style:f=>{const c=String((f.properties&&(f.properties.Class||f.properties.class||f.properties.polygonlabel))||'');return {color:col(/red/i.test(c)?'warning':/orange/i.test(c)?'watch':a.level),weight:1.5,fillOpacity:.12}}}).addTo(mapObj)}catch(e){}
+        try{LF.geoJSON(fc,{filter:f=>f.geometry&&/Polygon/.test(f.geometry.type),style:f=>{const c=String((f.properties&&(f.properties.Class||f.properties.class||f.properties.polygonlabel))||'');return {color:col(/red/i.test(c)?'warning':/orange/i.test(c)?'watch':a.level),weight:1.5,fillOpacity:.12}}}).addTo(mapObj)}catch(e){}
       }));
       const shel=(S.shelters&&S.shelters.list||[]).slice(0,8);
-      mapPins.shelters=shel.map((s,i)=>{const m=L.marker([s.lat,s.lon],{title:s.name,icon:L.divIcon({className:'',html:`<div class="apin ap-shelter">${ic('home')}</div>`,iconSize:[30,30],iconAnchor:[15,15]})}).addTo(mapObj);m.on('click',()=>focusShelter(i,false));return m});
+      mapPins.shelters=shel.map((s,i)=>{const m=LF.marker([s.lat,s.lon],{title:s.name,icon:LF.divIcon({className:'',html:`<div class="apin ap-shelter">${ic('home')}</div>`,iconSize:[30,30],iconAnchor:[15,15]})}).addTo(mapObj);m.on('click',()=>focusShelter(i,false));return m});
       const near=pts.filter(a=>!a.dist||a.dist<1500);
       const nearSh=shel.slice(0,3);
-      if(near.length||polys.length||nearSh.length){try{const b=L.latLngBounds([[loc.lat,loc.lon],...near.map(a=>[a.lat,a.lon]),...nearSh.map(s=>[s.lat,s.lon])]);polys.forEach(p=>b.extend(p.getBounds()));mapObj.fitBounds(b.pad(.2),{maxZoom:11})}catch(e){}}
+      if(near.length||polys.length||nearSh.length){try{const b=LF.latLngBounds([[loc.lat,loc.lon],...near.map(a=>[a.lat,a.lon]),...nearSh.map(s=>[s.lat,s.lon])]);polys.forEach(p=>b.extend(p.getBounds()));mapObj.fitBounds(b.pad(.2),{maxZoom:11})}catch(e){}}
     }
     setTimeout(()=>{if(!ok&&document.getElementById('map')===el){try{mapObj.remove()}catch(e){} mapObj=null; mapFallback(el)}},3500);
   }catch(e){mapFallback(el)}
@@ -2344,6 +2346,7 @@ function render(scroll){
   const v=document.getElementById('view');
   const map={home:vHome,education:vEducation,disasters:()=>vDisasters(r.slug),map:vMap,community:vCommunity,profile:vProfile,login:vLogin,signup:vSignup,privacy:()=>vLegal('privacy'),terms:()=>vLegal('terms'),'404':v404};
   v.innerHTML=(map[r.name]||v404)();
+  const tt=document.getElementById('toptools'); if(tt) tt.innerHTML=r.name==='home'?`<button class="iconbtn" data-action="speak" aria-label="${t('readAloud')}">${ic('speaker')}</button><button class="iconbtn" data-action="settings" aria-label="${t('settings')}">${ic('gear')}</button>`:'';
   const nm={home:'',education:t('education'),disasters:t('disasters'),map:t('map'),community:t('community'),profile:t('profile'),login:t('signIn'),signup:t('createAcc'),privacy:t('privacy'),terms:t('terms'),'404':t('nfTitle')}[r.name];
   document.title=nm?`${nm} · SAFAST`:'SAFAST';
   if(r.name==='map') requestAnimationFrame(initMap); else if(mapObj){try{mapObj.remove()}catch(e){} mapObj=null}
