@@ -844,7 +844,7 @@ en:{
   until:'Until', issued:'Issued', source:'Source', example:'Example', exampleNote:'Live alerts load on safast.app. These are examples of what alerts look like.',
   notify:'Notify me', notifyOn:'Notifications on', notifyOff:'Notifications are blocked in this browser.', notifyHint:'Shows a notification while SAFAST is open.',
   checking:'Checking alert sources…', lastCheck:'Checked', refresh:'Refresh', sources:'Alert sources', koOnly:'Official message in Korean',
-  srcState:'Sources', srcOk:'connected', srcOff:'not set up', srcErr:'unavailable', forecastNote:'Based on the forecast for your exact location, using KMA warning thresholds. Not an official warning.',
+  srcState:'Sources', srcOk:'Connected', srcOff:'Not set up', srcErr:'Unavailable', forecastNote:'Based on the forecast for your exact location, using KMA warning thresholds. Not an official warning.',
   mins:m=>m<1?'just now':m<60?`${m} min ago`:m<1440?`${Math.round(m/60)} h ago`:`${Math.round(m/1440)} d ago`
 },
 ko:{
@@ -2082,7 +2082,7 @@ const gcatStyle=c=>/Did You Know/.test(c)?'dyk':c==='Disaster of the Week'?'dotw
 const driveId=u=>(String(u).match(/\/d\/([\w-]{10,})/)||[])[1];
 function guideCover(g,cls=''){
   const st=gcatStyle(g.cat);
-  return `<div class="cover cover--${st} cover--img ${cls}"><span class="cover__k">${esc(gcatName(g.cat))}</span><span class="cover__h">${esc(guideTitle(g))}</span>${g.n?`<span class="cover__n">${g.n}</span>`:''}${g.thumb?`<img src="${esc(g.thumb)}" alt="" loading="lazy" decoding="async">`:''}</div>`;
+  return `<div class="cover cover--${st} cover--img ${cls}"><span class="cover__k">${esc(gcatName(g.cat))}</span><span class="cover__h">${esc(guideTitle(g))}</span>${g.n?`<span class="cover__n">${g.n}</span>`:''}</div>`;
 }
 function cover(g,cls=''){
   if(g.image) return `<div class="cover ${cls}"><img src="${esc(g.image)}" alt=""></div>`;
@@ -2309,7 +2309,7 @@ function initMap(){
   }catch(e){mapFallback(el)}
 }
 function vCommunity(){
-  const mats=MATERIALS.map((m,k)=>`<button class="mat" data-action="doc" data-v="m-${k}"><span class="mat__thumb m-${m.tone}">${ic(m.icon)}${m.thumb?`<img src="${esc(m.thumb)}" alt="" loading="lazy">`:''}</span><span class="mat__body"><span class="label">${esc(L(m.k))}</span><span class="mat__t">${esc(L(m.title))}</span><span class="mat__d">${esc(L(m.d))}</span><span class="mat__m mono">${esc(L(m.meta))} · ${t('view')}</span></span>${ic('arrow','icon mat__go')}</button>`).join('');
+  const mats=MATERIALS.map((m,k)=>`<button class="mat" data-action="doc" data-v="m-${k}"><span class="mat__thumb m-${m.tone}">${ic(m.icon)}</span><span class="mat__body"><span class="label">${esc(L(m.k))}</span><span class="mat__t">${esc(L(m.title))}</span><span class="mat__d">${esc(L(m.d))}</span><span class="mat__m mono">${esc(L(m.meta))} · ${t('view')}</span></span>${ic('arrow','icon mat__go')}</button>`).join('');
   if(PST.list==null&&!PST.loading) setTimeout(loadPosts,0);
   return `<div class="page view">
     <div class="pagehead"><span class="label">${t('community')}</span><h1>${t('cTitle')}</h1><p>${t('cSub')}</p></div>
