@@ -430,7 +430,15 @@ html[lang=ko] p,html[lang=ko] .note{word-break:keep-all}
 .gdlist{padding:4px 0;overflow:hidden}
 .gd{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:14px;align-items:center;padding:12px 18px;border-top:1px solid var(--line);transition:background .15s}
 .gd:first-child{border-top:0}
+.gd{position:relative}
 .gd:hover{background:var(--surface-2)}
+.gd__hit{position:absolute;inset:0;z-index:1;background:none;border:0;padding:0;cursor:pointer;border-radius:inherit}
+.gd__hit:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.gd__meta{display:flex;align-items:center;gap:8px}
+.gd__ext{position:relative;z-index:2;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;color:var(--muted);border:1px solid var(--line);background:var(--surface);transition:background .15s,color .15s}
+.gd__ext:hover{color:var(--accent-text);background:var(--accent-soft)}
+.gd__ext .icon{width:15px;height:15px}
+.apin.is-on{transform:scale(1.35);box-shadow:0 0 0 6px color-mix(in srgb,var(--accent) 40%,transparent),0 3px 8px rgba(0,0,0,.3);position:relative;z-index:5}
 .gd__ico{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;background:var(--adv-soft);color:var(--adv)}
 .gd__ico.al-bad{background:var(--bad);color:#fff}.gd__ico.al-warn{background:var(--warn);color:#fff}
 .gd__main{display:flex;flex-direction:column;min-width:0}
@@ -447,6 +455,7 @@ html[lang=ko] p,html[lang=ko] .note{word-break:keep-all}
 .apin--sm{width:22px;height:22px;border-width:1.5px}.apin--sm .icon{width:12px;height:12px}
 .shelters{display:flex;flex-direction:column;gap:10px}
 .shelter{display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:var(--r-md);background:var(--surface);border:1px solid var(--line);transition:border-color .2s,box-shadow .2s}
+.gd.is-on{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
 .shelter.is-on{border-color:var(--ok);box-shadow:0 0 0 3px var(--ok-soft)}
 .shelter__ico{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--ok-soft);color:var(--ok)}
 .shelter__main{display:flex;flex-direction:column;gap:7px;min-width:0}
@@ -776,7 +785,7 @@ en:{
   locPrivacy:'Your location is only used to look up local conditions. SAFAST does not store it on any server.', notNow:'Not now',
   locOffTitle:'Location is off', locOffBody:n=>`Alerts and weather are showing ${n}. Turn on location to get warnings for where you are.`, locOn:'Turn on location', locBlocked:'Location is blocked in this browser. Allow it for safast.app in your site settings, then reload.',
   srcNws:'NWS official', srcNoUS:'US only', srcGdacs:'GDACS global', gdacsNote:'Automated impact estimate from GDACS (UN / European Commission). Follow local authorities.',
-  nowTitle:'Happening now', nowSub:'Major natural disasters in progress worldwide, rated by expected impact on people.', nowNone:'No major disasters in progress right now.', nowMinor:n=>`Plus ${n} minor event${n===1?'':'s'} being tracked.`,
+  gdReport:'Open GDACS report', nowTitle:'Happening now', nowSub:'Major natural disasters in progress worldwide, rated by expected impact on people.', nowNone:'No major disasters in progress right now.', nowMinor:n=>`Plus ${n} minor event${n===1?'':'s'} being tracked.`,
   nowErr:'The live feed is unavailable right now. Try again shortly.', nowEx:'Live events load on safast.app. These are examples.', report:'Full report',
   inArea:'You are in the affected area', nearMe:'Near me', worldwide:'Worldwide', away:d=>`${d} away`, lvRed:'Red', lvOrange:'Orange', lvGreen:'Green',
   gTC:'Tropical cyclone', gEQ:'Earthquake', gFL:'Flood', gVO:'Volcano', gDR:'Drought', gWF:'Wildfire',
@@ -2226,11 +2235,13 @@ function vDisasters(open){
 }
 function gdRow(e){
   const lv=LV_CLS[e.level];
-  return `<a class="gd" href="${esc(e.report)}" target="_blank" rel="noopener">
+  const title=`${gdName(e.type)}${e.name&&!/^\d+$/.test(e.name)?` · ${e.name}`:''}`;
+  return `<div class="gd" id="gd-${esc(e.key)}">
+    <button class="gd__hit" data-action="gd-map" data-v="${esc(e.key)}" aria-label="${esc(t('showOnMap'))}: ${esc(title)}"></button>
     <span class="gd__ico al-${lv}">${ic((HZ[GD_HZ[e.type]]||HZ.other)[0])}</span>
-    <span class="gd__main"><span class="gd__t">${esc(gdName(e.type))}${e.name&&!/^\d+$/.test(e.name)?` · ${esc(e.name)}`:''}</span>
+    <span class="gd__main"><span class="gd__t">${esc(title)}</span>
       <span class="gd__m">${esc(e.country||'')}${e.sev?` · ${esc(e.sev)}`:''}</span></span>
-    <span class="gd__r"><span class="level lv-${lv}">${t('lv'+e.alert)}</span><span class="gd__ago">${esc(ago(e.modified))}</span></span></a>`;
+    <span class="gd__r"><span class="level lv-${lv}">${t('lv'+e.alert)}</span><span class="gd__meta"><span class="gd__ago">${esc(ago(e.modified))}</span><a class="gd__ext" href="${esc(e.report)}" target="_blank" rel="noopener" aria-label="${esc(t('gdReport'))}" title="${esc(t('gdReport'))}">${ic('ext')}</a></span></span></div>`;
 }
 function nowFeed(){
   const g=S.gdacs;
@@ -2260,7 +2271,7 @@ function vMap(){
       <div class="mapwrap"><div id="map" role="region" aria-label="${t('map')}"></div>
         <div class="maptools"><button class="iconbtn" data-action="locate" aria-label="${t('useLoc')}">${ic('locate')}</button></div></div></div>
       <div class="section" style="gap:16px">
-        ${S.mapScope==='world'?`<div class="section__head"><h2>${t('nowTitle')}</h2></div>${(S.gdacs&&S.gdacs.ok)?`<div class="gdlist card">${S.gdacs.events.slice().sort((a,b)=>(LV_RANK[b.level]-LV_RANK[a.level])||new Date(b.modified)-new Date(a.modified)).slice(0,12).map(gdRow).join('')||`<div class="empty">${t('nowNone')}</div>`}</div>`:`<div class="empty">${S.gdacs?t('nowErr'):t('checking')}</div>`}`:''}
+        ${S.mapScope==='world'?`<div class="section__head"><h2>${t('nowTitle')}</h2></div>${(S.gdacs&&S.gdacs.ok)?`<div class="gdlist card">${S.gdacs.events.slice().sort((a,b)=>(LV_RANK[b.level]-LV_RANK[a.level])||new Date(b.modified)-new Date(a.modified)).slice(0,S.gdAll?999:12).map(gdRow).join('')||`<div class="empty">${t('nowNone')}</div>`}</div>`:`<div class="empty">${S.gdacs?t('nowErr'):t('checking')}</div>`}`:''}
         <div class="section__head"><h2>${t('activeAlerts')}</h2>${notifyActive()?`<span class="level lv-ok">${ic('bell','icon')} ${t('notifyOn')}</span>`:`<button class="btn btn--ghost btn--sm" data-action="notify">${ic('bell')}${t('notify')}</button>`}</div>
         ${alerts}
         ${S.mapScope!=='world'?sheltersBlock():''}
@@ -2280,6 +2291,26 @@ function mapFallback(el){
   el.innerHTML=`<div class="mapfb"><svg viewBox="0 0 800 450" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="800" height="450" fill="var(--surface-2)"/>${lines}<path d="M-20 210 C 140 170, 260 260, 420 205 S 680 150, 820 190" stroke="var(--wx-cloud)" stroke-width="26" fill="none" opacity=".55"/><circle cx="400" cy="225" r="46" fill="var(--accent)" opacity=".12"/><circle cx="400" cy="225" r="11" fill="var(--accent)" stroke="var(--surface)" stroke-width="4"/></svg><span class="mapfb__note">${t('mapFb')}</span></div>`;
 }
 let mapObj=null; const mapPins={shelters:[]};
+function mapToEvent(key){
+  const e=((S.gdacs&&S.gdacs.events)||[]).find(x=>x.key===key); if(!e) return;
+  S.gdFocus=key;
+  const scrollMap=()=>setTimeout(()=>document.getElementById('map')?.scrollIntoView({behavior:'smooth',block:'center'}),60);
+  if(cur().name!=='map'){S.mapScope='world';go('/map');scrollMap();return}
+  if(S.mapScope!=='world'){S.mapScope='world';render(false);scrollMap();return}
+  document.querySelectorAll('#map .apin.is-on').forEach(x=>x.classList.remove('is-on'));
+  document.querySelector(`#map .apin[data-k="${CSS.escape(key)}"]`)?.classList.add('is-on');
+  if(mapObj){try{mapObj.setView([e.lat,e.lon],5)}catch(x){}}
+  scrollMap();
+}
+function focusEvent(key){
+  if(!document.getElementById('gd-'+key)){S.gdAll=true;render(false)}
+  requestAnimationFrame(()=>{
+    const row=document.getElementById('gd-'+key); if(!row) return;
+    document.querySelectorAll('.gd.is-on').forEach(x=>x.classList.remove('is-on'));
+    row.classList.add('is-on'); row.scrollIntoView({behavior:'smooth',block:'center'});
+    setTimeout(()=>row.classList.remove('is-on'),2600);
+  });
+}
 function focusShelter(i,fromList){
   const s=S.shelters&&S.shelters.list[i]; if(!s) return;
   document.querySelectorAll('.shelter.is-on').forEach(x=>x.classList.remove('is-on'));
@@ -2338,11 +2369,12 @@ function initGoogleMap(el){
       paths[0].forEach(pt=>bounds.extend(pt)); fit=true;
     });
   }catch(e){}});
-  const pin=(lat,lon,lv,hz,title,small,onClick)=>new Pin(lat,lon,`<div class="apin ap-${lv}${small?' apin--sm':''}">${ic((HZ[hz]||HZ.other)[0])}</div>`,small?22:30,title,onClick);
+  const pin=(lat,lon,lv,hz,title,small,onClick,key)=>new Pin(lat,lon,`<div class="apin ap-${lv}${small?' apin--sm':''}${key&&key===S.gdFocus?' is-on':''}"${key?` data-k="${esc(key)}"`:''}>${ic((HZ[hz]||HZ.other)[0])}</div>`,small?22:30,title,onClick);
   if(S.mapScope==='world'){
     const ev=(S.gdacs&&S.gdacs.events)||[];
-    ev.slice().sort((a,b)=>LV_RANK[a.level]-LV_RANK[b.level]).forEach(e=>pin(e.lat,e.lon,LV_CLS[e.level],GD_HZ[e.type],`${gdName(e.type)} ${e.name||''} · ${e.country||''}`,e.alert==='Green',()=>window.open(e.report,'_blank','noopener')));
-    map.setCenter({lat:20,lng:loc.lon>-30?100:-60}); map.setZoom(2);
+    ev.slice().sort((a,b)=>LV_RANK[a.level]-LV_RANK[b.level]).forEach(e=>pin(e.lat,e.lon,LV_CLS[e.level],GD_HZ[e.type],`${gdName(e.type)} ${e.name||''} · ${e.country||''}`,e.alert==='Green',()=>focusEvent(e.key),e.key));
+    const fe=S.gdFocus&&ev.find(x=>x.key===S.gdFocus);
+    if(fe){map.setCenter({lat:fe.lat,lng:fe.lon});map.setZoom(5)} else {map.setCenter({lat:20,lng:loc.lon>-30?100:-60}); map.setZoom(2)}
   }else{
     const pts=S.alerts.filter(a=>a.lat!=null&&a.lon!=null);
     pts.forEach(a=>pin(a.lat,a.lon,LV_CLS[a.level],a.hazard,atxt(a.title)));
@@ -2395,11 +2427,12 @@ function initLeafletMap(el){
       const pl=LF.polygon(a.geom.map(poly=>poly.map(ring=>ring.map(([x,y])=>[y,x]))),{color:col(a.level),weight:2,fillOpacity:.14}).addTo(mapObj);
       pl.bindTooltip?.(atxt(a.title)); polys.push(pl);
     }catch(e){}});
-    const pin=(lat,lon,lv,hz,title,small)=>LF.marker([lat,lon],{title,icon:LF.divIcon({className:'',html:`<div class="apin ap-${lv}${small?' apin--sm':''}">${ic((HZ[hz]||HZ.other)[0])}</div>`,iconSize:small?[22,22]:[30,30],iconAnchor:small?[11,11]:[15,15]})}).addTo(mapObj);
+    const pin=(lat,lon,lv,hz,title,small,key)=>LF.marker([lat,lon],{title,icon:LF.divIcon({className:'',html:`<div class="apin ap-${lv}${small?' apin--sm':''}${key&&key===S.gdFocus?' is-on':''}"${key?` data-k="${esc(key)}"`:''}>${ic((HZ[hz]||HZ.other)[0])}</div>`,iconSize:small?[22,22]:[30,30],iconAnchor:small?[11,11]:[15,15]})}).addTo(mapObj);
     if(S.mapScope==='world'){
       const ev=(S.gdacs&&S.gdacs.events)||[];
-      ev.slice().sort((a,b)=>LV_RANK[a.level]-LV_RANK[b.level]).forEach(e=>{const m=pin(e.lat,e.lon,LV_CLS[e.level],GD_HZ[e.type],`${gdName(e.type)} ${e.name||''} · ${e.country||''}`,e.alert==='Green');m.on('click',()=>window.open(e.report,'_blank','noopener'))});
-      mapObj.setView([20,loc.lon>-30?100:-60],2);
+      ev.slice().sort((a,b)=>LV_RANK[a.level]-LV_RANK[b.level]).forEach(e=>{const m=pin(e.lat,e.lon,LV_CLS[e.level],GD_HZ[e.type],`${gdName(e.type)} ${e.name||''} · ${e.country||''}`,e.alert==='Green',e.key);m.on('click',()=>focusEvent(e.key))});
+      const fe=S.gdFocus&&ev.find(x=>x.key===S.gdFocus);
+      if(fe) mapObj.setView([fe.lat,fe.lon],5); else mapObj.setView([20,loc.lon>-30?100:-60],2);
     }else{
       const pts=S.alerts.filter(a=>a.lat!=null&&a.lon!=null);
       pts.forEach(a=>pin(a.lat,a.lon,LV_CLS[a.level],a.hazard,atxt(a.title)));
@@ -2541,7 +2574,8 @@ document.addEventListener('click',e=>{
     case 'tts-rate': ttsRate(); break;
     case 'tts-text': ttsText(); break;
     case 'doc': openDoc(v); break;
-    case 'scope': S.mapScope=v; render(false); break;
+    case 'scope': S.gdAll=false; S.gdFocus=null; S.mapScope=v; render(false); break;
+    case 'gd-map': mapToEvent(v); break;
     case 'sh-focus': focusShelter(+v,true); break;
     case 'refresh-alerts': S.alertsReady=false; render(false); loadAlerts(); break;
     case 'call': if(b.getAttribute('href')==='#'){e.preventDefault();document.getElementById('f-cphone')?.focus()} break;
