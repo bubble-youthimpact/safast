@@ -1,0 +1,66 @@
+rules_version = '2';
+// SAFAST — Firestore security rules
+// users/{uid}: one profile per account. Only the owner can write it.
+// A guardian can READ a profile only when:
+//   - the owner turned on sharing (shareWithGuardians == true), and
+//   - the guardian's verified sign-in email is in the owner's guardianEmails list.
+// posts/{id}: community posts. Anyone can read approved posts. Signed-in people can submit a
+//   post (it starts as "pending"); only admins can approve. Authors and admins can delete.
+// reports/{id}: signed-in people can report a post; only admins can read or clear reports.
+// admins/{uid}: add a document here (in the console) to make that account an admin.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid} {
+      function isOwner() { return request.auth != null && request.auth.uid == uid; }
+      function isGuardian() {
+        return request.auth != null
+          && request.auth.token.email_verified == true
+          && resource.data.shareWithGuardians == true
+          && request.auth.token.email.lower() in resource.data.guardianEmails;
+      }
+      allow read: if isOwner() || isGuardian();
+      allow create: if isOwner() && request.resource.data.email == request.auth.token.email.lower();
+      allow update: if isOwner() && request.resource.data.email == resource.data.email;
+      allow delete: if isOwner();
+    }
+
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    function str(v, max) { return v is string && v.size() <= max; }
+
+    match /admins/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    match /posts/{id} {
+      function validPost(d) {
+        return d.keys().hasOnly(['type','title','loc','details','authorUid','authorName','status','createdAt'])
+          && d.type in ['cleanup','resources','hazard']
+          && str(d.title, 90) && d.title.size() > 0
+          && str(d.loc, 80) && str(d.details, 600) && str(d.authorName, 60)
+          && d.createdAt is int;
+      }
+      allow read: if resource.data.status == 'approved'
+        || (signedIn() && resource.data.authorUid == request.auth.uid)
+        || isAdmin();
+      allow create: if signedIn()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && validPost(request.resource.data);
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','approvedAt'])
+        && request.resource.data.status in ['pending','approved'];
+      allow delete: if signedIn() && (resource.data.authorUid == request.auth.uid || isAdmin());
+    }
+
+    match /reports/{id} {
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && id == request.resource.data.postId + '_' + request.auth.uid
+        && request.resource.data.keys().hasOnly(['postId','postTitle','uid','createdAt'])
+        && str(request.resource.data.postTitle, 90);
+      allow read, delete: if isAdmin();
+    }
+  }
+}
