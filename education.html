@@ -2318,7 +2318,7 @@ function initGoogleMap(el){
   const G=google.maps;
   const loc=S.loc||DEFAULT_LOC;
   const dark=document.documentElement.dataset.theme==='dark'||(!document.documentElement.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);
-  const map=new G.Map(el,{center:{lat:loc.lat,lng:loc.lon},zoom:12,styles:dark?GM_DARK:GM_LIGHT,disableDefaultUI:true,zoomControl:true,fullscreenControl:true,gestureHandling:'cooperative',clickableIcons:false,backgroundColor:dark?'#1d2a30':'#eef1ef'});
+  const map=new G.Map(el,{center:{lat:loc.lat,lng:loc.lon},zoom:14,styles:dark?GM_DARK:GM_LIGHT,disableDefaultUI:true,zoomControl:true,fullscreenControl:false,gestureHandling:'cooperative',clickableIcons:false,backgroundColor:dark?'#1d2a30':'#eef1ef'});
   // HTML pins drawn on the map (keeps SAFAST's own pin style)
   class Pin extends G.OverlayView{
     constructor(lat,lon,html,size,title,onClick){super();this.pos=new G.LatLng(lat,lon);this.html=html;this.size=size;this.title=title;this.onClick=onClick;this.setMap(map)}
@@ -2356,11 +2356,11 @@ function initGoogleMap(el){
     }));
     const shel=(S.shelters&&S.shelters.list||[]).slice(0,8);
     mapPins.shelters=shel.map((s,i)=>new Pin(s.lat,s.lon,`<div class="apin ap-shelter">${ic('home')}</div>`,30,s.name,()=>focusShelter(i,false)));
-    const near=pts.filter(a=>!a.dist||a.dist<1500), nearSh=shel.slice(0,3);
+    const near=pts.filter(a=>a.dist!=null&&a.dist<60), nearSh=shel.filter(s=>s.dist==null||s.dist<15).slice(0,1);
     near.forEach(a=>bounds.extend({lat:a.lat,lng:a.lon})); nearSh.forEach(s=>bounds.extend({lat:s.lat,lng:s.lon}));
     if(near.length||nearSh.length||fit){
       map.fitBounds(bounds,40);
-      G.event.addListenerOnce(map,'idle',()=>{if(map.getZoom()>11) map.setZoom(11)});
+      G.event.addListenerOnce(map,'idle',()=>{const z=map.getZoom();if(z>14) map.setZoom(14); else if(z<10) map.setZoom(10)});
     }
   }
 }
@@ -2370,7 +2370,7 @@ function initLeafletMap(el){
   const LF=window.L; if(!LF||typeof LF.map!=='function'){mapFallback(el);return}
   try{
     const dark=document.documentElement.dataset.theme==='dark'||(!document.documentElement.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);
-    mapObj=LF.map(el,{zoomControl:true,attributionControl:true}).setView([loc.lat,loc.lon],12);
+    mapObj=LF.map(el,{zoomControl:true,attributionControl:true}).setView([loc.lat,loc.lon],14);
     let ok=false, prov=0, errs=0, layer=null;
     const ATTR='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
     // several free tile sources; if one is blocked or slow on this network, the next one is tried
@@ -2410,9 +2410,9 @@ function initLeafletMap(el){
       }));
       const shel=(S.shelters&&S.shelters.list||[]).slice(0,8);
       mapPins.shelters=shel.map((s,i)=>{const m=LF.marker([s.lat,s.lon],{title:s.name,icon:LF.divIcon({className:'',html:`<div class="apin ap-shelter">${ic('home')}</div>`,iconSize:[30,30],iconAnchor:[15,15]})}).addTo(mapObj);m.on('click',()=>focusShelter(i,false));return m});
-      const near=pts.filter(a=>!a.dist||a.dist<1500);
-      const nearSh=shel.slice(0,3);
-      if(near.length||polys.length||nearSh.length){try{const b=LF.latLngBounds([[loc.lat,loc.lon],...near.map(a=>[a.lat,a.lon]),...nearSh.map(s=>[s.lat,s.lon])]);polys.forEach(p=>b.extend(p.getBounds()));mapObj.fitBounds(b.pad(.2),{maxZoom:11})}catch(e){}}
+      const near=pts.filter(a=>a.dist!=null&&a.dist<60);
+      const nearSh=shel.filter(s=>s.dist==null||s.dist<15).slice(0,1);
+      if(near.length||polys.length||nearSh.length){try{const b=LF.latLngBounds([[loc.lat,loc.lon],...near.map(a=>[a.lat,a.lon]),...nearSh.map(s=>[s.lat,s.lon])]);polys.forEach(p=>b.extend(p.getBounds()));mapObj.fitBounds(b.pad(.2),{maxZoom:14})}catch(e){}}
     }
     setTimeout(()=>{if(!ok&&document.getElementById('map')===el){try{mapObj.remove()}catch(e){} mapObj=null; mapFallback(el)}},20000);
   }catch(e){mapFallback(el)}
